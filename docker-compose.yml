@@ -1,0 +1,19 @@
+services:
+  localstack:
+    image: localstack/localstack:3.4
+    container_name: medislot-localstack
+    ports:
+      - "127.0.0.1:4566:4566"
+    environment:
+      - SERVICES=dynamodb,lambda,apigateway,iam,cloudformation,sts,s3
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - DEBUG=0
+      - EAGER_SERVICE_LOADING=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
