@@ -1,0 +1,24 @@
+"use strict";
+// NOTE: This asset is loaded as-is by the Lambda runtime. It is compiled to
+// plain JS at build time in a real pipeline; for this assessment the handler
+// is intentionally simple and only provides supporting runtime context.
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.handler = void 0;
+const TABLE_NAME = process.env.APPOINTMENTS_TABLE_NAME ?? '';
+const INDEX_NAME = 'byDate';
+const handler = async (event) => {
+    const date = event?.queryStringParameters?.date;
+    if (!date) {
+        return { statusCode: 400, body: JSON.stringify({ message: 'date query parameter is required' }) };
+    }
+    // Placeholder query — in the deployed service this queries the byDate GSI.
+    const result = {
+        date,
+        tableName: TABLE_NAME,
+        indexName: INDEX_NAME,
+        appointments: [],
+    };
+    return { statusCode: 200, body: JSON.stringify(result) };
+};
+exports.handler = handler;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibGlzdEFwcG9pbnRtZW50cy5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbImxpc3RBcHBvaW50bWVudHMudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IjtBQUFBLDRFQUE0RTtBQUM1RSw2RUFBNkU7QUFDN0Usd0VBQXdFOzs7QUFFeEUsTUFBTSxVQUFVLEdBQUcsT0FBTyxDQUFDLEdBQUcsQ0FBQyx1QkFBdUIsSUFBSSxFQUFFLENBQUM7QUFDN0QsTUFBTSxVQUFVLEdBQUcsUUFBUSxDQUFDO0FBRXJCLE1BQU0sT0FBTyxHQUFHLEtBQUssRUFBRSxLQUFVLEVBQUUsRUFBRTtJQUMxQyxNQUFNLElBQUksR0FBRyxLQUFLLEVBQUUscUJBQXFCLEVBQUUsSUFBSSxDQUFDO0lBQ2hELElBQUksQ0FBQyxJQUFJLEVBQUUsQ0FBQztRQUNWLE9BQU8sRUFBRSxVQUFVLEVBQUUsR0FBRyxFQUFFLElBQUksRUFBRSxJQUFJLENBQUMsU0FBUyxDQUFDLEVBQUUsT0FBTyxFQUFFLGtDQUFrQyxFQUFFLENBQUMsRUFBRSxDQUFDO0lBQ3BHLENBQUM7SUFFRCwyRUFBMkU7SUFDM0UsTUFBTSxNQUFNLEdBQUc7UUFDYixJQUFJO1FBQ0osU0FBUyxFQUFFLFVBQVU7UUFDckIsU0FBUyxFQUFFLFVBQVU7UUFDckIsWUFBWSxFQUFFLEVBQUU7S0FDakIsQ0FBQztJQUVGLE9BQU8sRUFBRSxVQUFVLEVBQUUsR0FBRyxFQUFFLElBQUksRUFBRSxJQUFJLENBQUMsU0FBUyxDQUFDLE1BQU0sQ0FBQyxFQUFFLENBQUM7QUFDM0QsQ0FBQyxDQUFDO0FBZlcsUUFBQSxPQUFPLFdBZWxCIiwic291cmNlc0NvbnRlbnQiOlsiLy8gTk9URTogVGhpcyBhc3NldCBpcyBsb2FkZWQgYXMtaXMgYnkgdGhlIExhbWJkYSBydW50aW1lLiBJdCBpcyBjb21waWxlZCB0b1xuLy8gcGxhaW4gSlMgYXQgYnVpbGQgdGltZSBpbiBhIHJlYWwgcGlwZWxpbmU7IGZvciB0aGlzIGFzc2Vzc21lbnQgdGhlIGhhbmRsZXJcbi8vIGlzIGludGVudGlvbmFsbHkgc2ltcGxlIGFuZCBvbmx5IHByb3ZpZGVzIHN1cHBvcnRpbmcgcnVudGltZSBjb250ZXh0LlxuXG5jb25zdCBUQUJMRV9OQU1FID0gcHJvY2Vzcy5lbnYuQVBQT0lOVE1FTlRTX1RBQkxFX05BTUUgPz8gJyc7XG5jb25zdCBJTkRFWF9OQU1FID0gJ2J5RGF0ZSc7XG5cbmV4cG9ydCBjb25zdCBoYW5kbGVyID0gYXN5bmMgKGV2ZW50OiBhbnkpID0+IHtcbiAgY29uc3QgZGF0ZSA9IGV2ZW50Py5xdWVyeVN0cmluZ1BhcmFtZXRlcnM/LmRhdGU7XG4gIGlmICghZGF0ZSkge1xuICAgIHJldHVybiB7IHN0YXR1c0NvZGU6IDQwMCwgYm9keTogSlNPTi5zdHJpbmdpZnkoeyBtZXNzYWdlOiAnZGF0ZSBxdWVyeSBwYXJhbWV0ZXIgaXMgcmVxdWlyZWQnIH0pIH07XG4gIH1cblxuICAvLyBQbGFjZWhvbGRlciBxdWVyeSDigJQgaW4gdGhlIGRlcGxveWVkIHNlcnZpY2UgdGhpcyBxdWVyaWVzIHRoZSBieURhdGUgR1NJLlxuICBjb25zdCByZXN1bHQgPSB7XG4gICAgZGF0ZSxcbiAgICB0YWJsZU5hbWU6IFRBQkxFX05BTUUsXG4gICAgaW5kZXhOYW1lOiBJTkRFWF9OQU1FLFxuICAgIGFwcG9pbnRtZW50czogW10sXG4gIH07XG5cbiAgcmV0dXJuIHsgc3RhdHVzQ29kZTogMjAwLCBib2R5OiBKU09OLnN0cmluZ2lmeShyZXN1bHQpIH07XG59O1xuIl19

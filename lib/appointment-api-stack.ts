@@ -1,11 +1,9 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as path from 'path';
 import { EnvConfig } from './additional-constructs';
+import { MediSlotFunction } from './medislot-function';
 
 export interface AppointmentApiStackProps extends cdk.StackProps {
   readonly config: EnvConfig;
@@ -13,10 +11,15 @@ export interface AppointmentApiStackProps extends cdk.StackProps {
 
 /**
  * Provisions the appointment scheduling API:
- *   API Gateway (POST /api/appointments) -> Lambda -> DynamoDB appointments table.
  *
- * The same stack class is instantiated for the dev and staging environments
- * from bin/app.ts based on the `env` context value.
+ *   API Gateway                          Lambda                     DynamoDB
+ *   POST   /api/appointments        ->  createAppointmentFn   -+
+ *   GET    /api/appointments        ->  listAppointmentsFn     +-> appointments table
+ *   GET    /api/appointments/{id}   ->  getAppointmentFn       |     (byDate GSI)
+ *   DELETE /api/appointments/{id}   ->  cancelAppointmentFn   -+
+ *
+ * The same stack class is instantiated for the dev, staging and prod
+ * environments from bin/app.ts based on the `env` context value.
  */
 export class AppointmentApiStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: AppointmentApiStackProps) {
@@ -24,27 +27,56 @@ export class AppointmentApiStack extends cdk.Stack {
 
     const { config } = props;
 
+    // No fixed physical name: CloudFormation derives a per-stack unique name,
+    // so dev/staging/prod can coexist in one account.
     const appointmentsTable = new dynamodb.Table(this, 'AppointmentsTable', {
       partitionKey: { name: 'appointmentId', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: config.appointmentsTableRemovalPolicy,
+      removalPolicy: config.tableRemovalPolicy,
+      pointInTimeRecovery: config.pointInTimeRecovery,
     });
 
-    const createAppointmentFn = new lambda.Function(this, 'CreateAppointmentFn', {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'handler.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '..', 'lambda')),
-      environment: {
-        APPOINTMENTS_TABLE_NAME: appointmentsTable.tableName,
-      },
+    appointmentsTable.addGlobalSecondaryIndex({
+      indexName: 'byDate',
+      partitionKey: { name: 'date', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'appointmentId', type: dynamodb.AttributeType.STRING },
     });
 
-    createAppointmentFn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['dynamodb:PutItem', 'dynamodb:DescribeTable'],
-        resources: [appointmentsTable.tableArn],
-      })
-    );
+    const runtimeEnv = { APPOINTMENTS_TABLE_NAME: appointmentsTable.tableName };
+
+    // --- write path -------------------------------------------------------
+
+    const createAppointment = new MediSlotFunction(this, 'CreateAppointment', {
+      handler: 'createAppointment.handler',
+      config,
+      environment: runtimeEnv,
+    });
+    appointmentsTable.grantReadWriteData(createAppointment.fn);
+
+    const cancelAppointment = new MediSlotFunction(this, 'CancelAppointment', {
+      handler: 'cancelAppointment.handler',
+      config,
+      environment: runtimeEnv,
+    });
+    appointmentsTable.grantReadWriteData(cancelAppointment.fn);
+
+    // --- read path --------------------------------------------------------
+
+    const getAppointment = new MediSlotFunction(this, 'GetAppointment', {
+      handler: 'getAppointment.handler',
+      config,
+      environment: runtimeEnv,
+    });
+    appointmentsTable.grantReadData(getAppointment.fn);
+
+    const listAppointments = new MediSlotFunction(this, 'ListAppointments', {
+      handler: 'listAppointments.handler',
+      config,
+      environment: runtimeEnv,
+    });
+    appointmentsTable.grantReadData(listAppointments.fn);
+
+    // --- API --------------------------------------------------------------
 
     const api = new apigw.RestApi(this, 'AppointmentApi', {
       restApiName: `medislot-appointments-${config.envName}`,
@@ -53,7 +85,12 @@ export class AppointmentApiStack extends cdk.Stack {
 
     const apiRoot = api.root.addResource('api');
     const appointments = apiRoot.addResource('appointments');
-    appointments.addMethod('POST', new apigw.LambdaIntegration(createAppointmentFn));
+    appointments.addMethod('POST', new apigw.LambdaIntegration(createAppointment.fn));
+    appointments.addMethod('GET', new apigw.LambdaIntegration(listAppointments.fn));
+
+    const appointment = appointments.addResource('{id}');
+    appointment.addMethod('GET', new apigw.LambdaIntegration(getAppointment.fn));
+    appointment.addMethod('DELETE', new apigw.LambdaIntegration(cancelAppointment.fn));
 
     new cdk.CfnOutput(this, 'ApiUrl', { value: api.url });
     new cdk.CfnOutput(this, 'AppointmentsTableName', {

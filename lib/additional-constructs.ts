@@ -1,40 +1,37 @@
-import * as cdk from 'aws-cdk-lib';
-
 // Environment configuration for the MediSlot appointment service.
 //
-// The stack consumes this configuration so the same AppointmentApiStack class can
-// be synthesized for multiple environments while still expressing the behavior
-// that differs between environments.
+// Carries every per-environment value the stack needs, so a single stack
+// class can express meaningful differences between environments without
+// being duplicated.
+
+import { RemovalPolicy } from 'aws-cdk-lib';
 
 export interface EnvConfig {
-  /** Logical environment name, e.g. 'dev' or 'staging'. */
+  /** Logical environment name, e.g. 'dev', 'staging' or 'prod'. */
   readonly envName: string;
-
-  /** Removal policy for the environment's appointments table. */
-  readonly appointmentsTableRemovalPolicy: cdk.RemovalPolicy;
+  /** How long Lambda logs are kept in this environment (days). */
+  readonly logRetentionDays: number;
+  /** Whether operational alarms should be provisioned in this environment. */
+  readonly alarmsEnabled: boolean;
+  /** Data retention behaviour for stateful resources in this environment. */
+  readonly tableRemovalPolicy: RemovalPolicy;
+  /** Whether the appointments table keeps point-in-time recovery backups. */
+  readonly pointInTimeRecovery: boolean;
 }
 
-const ENVIRONMENT_CONFIGS: Record<string, EnvConfig> = {
-  dev: {
-    envName: 'dev',
-    appointmentsTableRemovalPolicy: cdk.RemovalPolicy.DESTROY,
-  },
-  staging: {
-    envName: 'staging',
-    appointmentsTableRemovalPolicy: cdk.RemovalPolicy.RETAIN,
-  },
-};
-
-const SUPPORTED_ENVIRONMENTS = Object.keys(ENVIRONMENT_CONFIGS);
+const SUPPORTED_ENVIRONMENTS = ['dev', 'staging', 'prod'];
 
 export function getEnvConfig(envName: string): EnvConfig {
-  const config = ENVIRONMENT_CONFIGS[envName];
-
-  if (!config) {
+  if (!SUPPORTED_ENVIRONMENTS.includes(envName)) {
     throw new Error(
       `Unsupported environment '${envName}'. Supported: ${SUPPORTED_ENVIRONMENTS.join(', ')}`
     );
   }
-
-  return config;
+  return {
+    envName,
+    logRetentionDays: envName === 'dev' ? 7 : 30,
+    alarmsEnabled: true,
+    tableRemovalPolicy: envName === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
+    pointInTimeRecovery: envName === 'prod',
+  };
 }
