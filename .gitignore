@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# CDK
+cdk.out/
+.cdk.staging/
+cdk.context.json
+
+# Build output
+dist/
+build/
+*.js
+!jest.config.js
+*.d.ts
+
+# Coverage
+coverage/
+
+# Credentials and env
+.env
+.env.*
+*.pem
+aws-credentials
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# Logs and temp
+*.log
+tmp/
+.tmp/
+
+# Local runtime state
+.localstack/
+volume/
